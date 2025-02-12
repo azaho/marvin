@@ -1,5 +1,5 @@
 To start working with the project, install dependencies:
 
 ```
-pip install dandi pynwb h5py matplotlib torch torchvision scikit-learn
+pip install dandi pynwb h5py matplotlib torch torchvision scikit-learn pygame
 ```
