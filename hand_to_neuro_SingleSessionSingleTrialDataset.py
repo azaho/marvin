@@ -6,7 +6,7 @@ from pynwb import NWBHDF5IO
 import os
 
 
-class SingleSessionSingleTrialDataset_OtherWay(Dataset):
+class SingleSessionSingleTrialDataset(Dataset):
     def __init__(self, trial_data, hand_data, hand_timestamps, unit_spike_times, trial_id, bin_size=0.02, n_future_vel_bins=10):
         """
         Dataset for a single trial from a single session, providing binned spike counts and hand velocity labels
