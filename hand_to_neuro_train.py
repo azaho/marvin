@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from hand_to_neuro_dataloaders import get_dataloaders
 from hand_to_neuro_models import TransformerModel
-from hand_to_neuro_visualize import visualize_with_real_data, visualize_with_its_own_data
+from hand_to_neuro_evaluate import visualize_with_real_data, visualize_with_its_own_data
 import torch
 import psutil
 from datetime import datetime
@@ -12,11 +12,15 @@ import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--d_model', type=int, default=512, help='Model dimension')
-parser.add_argument('--latent_dim', type=int, default=None, help='Latent dimension (optional)')
-parser.add_argument('--model_type', type=str, default='transformer', choices=['transformer', 'lstm'], help='Model type')
+parser.add_argument('--latent_dim', type=int, default=None,
+                    help='Latent dimension (optional)')
+parser.add_argument('--model_type', type=str, default='transformer',
+                    choices=['transformer', 'lstm'], help='Model type')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
-parser.add_argument('--weight_decay', type=float, default=0.001, help='Weight decay')
-parser.add_argument('--custom_prefix', type=str, default='', help='Custom prefix for model name')
+parser.add_argument('--weight_decay', type=float,
+                    default=0.001, help='Weight decay')
+parser.add_argument('--custom_prefix', type=str, default='',
+                    help='Custom prefix for model name')
 args = parser.parse_args()
 
 d_model = args.d_model
@@ -30,8 +34,10 @@ n_fr_bins = 9
 n_trials = 2000
 n_epochs = 200
 
-if custom_prefix != '': prefix = custom_prefix + "_"
-else: prefix = ""
+if custom_prefix != '':
+    prefix = custom_prefix + "_"
+else:
+    prefix = ""
 prefix += f"{model_type}_dm{d_model}"
 if latent_dim is not None:
     prefix += f"_ld{latent_dim}"
@@ -125,12 +131,14 @@ for epoch in range(n_epochs):
         test_accs.append(avg_test_acc)
 
     # Get GPU memory usage
-    gpu_mem_alloc = torch.cuda.memory_allocated(0) / 1024**2 if torch.cuda.is_available() else 0
-    gpu_mem_cached = torch.cuda.memory_reserved(0) / 1024**2 if torch.cuda.is_available() else 0
-    
+    gpu_mem_alloc = torch.cuda.memory_allocated(
+        0) / 1024**2 if torch.cuda.is_available() else 0
+    gpu_mem_cached = torch.cuda.memory_reserved(
+        0) / 1024**2 if torch.cuda.is_available() else 0
+
     # Get CPU memory usage
     cpu_mem = psutil.Process().memory_info().rss / 1024**2
-    
+
     # Calculate elapsed time and estimate remaining time
     current_time = datetime.now()
     elapsed_time = current_time - start_time
@@ -147,37 +155,44 @@ for epoch in range(n_epochs):
     # Save model checkpoint
     if (epoch + 1) % 40 == 0:
         # Save model checkpoint
-        checkpoint = {
-            'epoch': epoch + 1,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'train_loss': avg_train_loss,
-            'val_loss': avg_val_loss,
-            'test_acc': avg_test_acc,
-            'train_losses': train_losses,
-            'val_losses': val_losses,
-            'test_accs': test_accs
-        }
-        torch.save(checkpoint, f'model_data/{prefix}_epoch{epoch+1}.pt')
+        torch.save(model.state_dict(),
+                   f'model_data/{prefix}_epoch{epoch+1}.pt')
 
         # Save losses and metrics to JSON
         metrics = {
             'epoch': epoch + 1,
             'train_loss': avg_train_loss,
-            'val_loss': avg_val_loss, 
+            'val_loss': avg_val_loss,
             'test_acc': avg_test_acc,
-            'train_losses': train_losses,
-            'val_losses': val_losses,
-            'test_accs': test_accs,
-            'gpu_mem_alloc': gpu_mem_alloc,
-            'gpu_mem_cached': gpu_mem_cached,
-            'cpu_mem': cpu_mem,
-            'time_remaining': f"{hours_left:02d}:{minutes_left:02d}:{seconds_left:02d}"
+            'loss_store': {
+                'train_losses': train_losses,
+                'val_losses': val_losses,
+                'test_accs': test_accs,
+            },
+            'memory': {
+                'gpu_mem_alloc': gpu_mem_alloc,
+                'gpu_mem_cached': gpu_mem_cached,
+                'cpu_mem': cpu_mem
+            },
+            'time_remaining': f"{hours_left:02d}:{minutes_left:02d}:{seconds_left:02d}",
+            'hyperparameters': {
+                'n_epochs': n_epochs,
+                'n_neurons': n_neurons,
+                'n_fr_bins': n_fr_bins,
+                'n_future_vel_bins': n_future_vel_bins,
+                'bin_size': bin_size,
+                'd_model': d_model,
+                'latent_dim': latent_dim,
+                'model_type': model_type,
+                'lr': lr,
+                'weight_decay': weight_decay,
+                'device': str(device)
+            }
         }
         with open(f'model_data/{prefix}_metrics.json', 'w') as f:
             json.dump(metrics, f, indent=4)
 
         visualize_with_real_data(model, test_loader, n_neurons, n_fr_bins,
-                                device, prefix+f"_epoch{epoch+1}", temperature=1.0)
+                                 device, prefix+f"_epoch{epoch+1}", temperature=1.0)
         visualize_with_its_own_data(model, test_dataset, n_neurons,
                                     n_fr_bins, device, prefix+f"_epoch{epoch+1}", temperature=1.0)
