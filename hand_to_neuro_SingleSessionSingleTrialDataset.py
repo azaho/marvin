@@ -111,7 +111,7 @@ if __name__ == "__main__":
     unit_spike_times = [nwb_file.units[unit_id]['spike_times'].iloc[0][:]
                         for unit_id in range(len(nwb_file.units))]
 
-    dataset = SingleSessionSingleTrialDataset_OtherWay(
+    dataset = SingleSessionSingleTrialDataset(
         trial_data, hand_data, hand_timestamps, unit_spike_times, 0, bin_size=0.02, n_future_vel_bins=50)
     print(len(dataset))
     print(dataset[0][0].shape)
