@@ -62,9 +62,10 @@ def visualize_with_real_data(model, test_loader, n_neurons, n_fr_bins, device, p
     # Create model_data directory if it doesn't exist
     os.makedirs('model_data', exist_ok=True)
     plt.savefig('model_data/'+prefix+'_real_data.pdf', bbox_inches='tight')
+    plt.close()
+    plt.clf()
 
-
-def visualize_with_its_own_data(model, test_dataset, n_neurons, n_fr_bins, device, prefix, temperature=1.0):
+def visualize_with_its_own_data(model, test_dataset, n_neurons, n_fr_bins, device, prefix, temperature=1.0, cutoff_real_data_after=40):
     model.eval()
 
     # Initialize lists to store results
@@ -81,7 +82,7 @@ def visualize_with_its_own_data(model, test_dataset, n_neurons, n_fr_bins, devic
         velocities = velocities.to(device).unsqueeze(0)
 
         # Create a copy that we'll modify
-        n_context_bins = 70
+        n_context_bins = cutoff_real_data_after
         modified_spikes = spikes.clone()
         modified_spikes[:, n_context_bins:, :] = 0
 
@@ -142,3 +143,5 @@ def visualize_with_its_own_data(model, test_dataset, n_neurons, n_fr_bins, devic
     ax2.set_ylabel('Neuron')
 
     plt.savefig('model_data/'+prefix+'_own_data.pdf', bbox_inches='tight')
+    plt.close()
+    plt.clf()

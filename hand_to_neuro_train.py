@@ -5,17 +5,28 @@ from hand_to_neuro_dataloaders import get_dataloaders
 from hand_to_neuro_models import TransformerModel
 from hand_to_neuro_visualize import visualize_with_real_data, visualize_with_its_own_data
 import torch
+import psutil
+from datetime import datetime
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--d_model', type=int, default=512, help='Model dimension')
+parser.add_argument('--latent_dim', type=int, default=None, help='Latent dimension (optional)')
+parser.add_argument('--model_type', type=str, default='transformer', choices=['transformer', 'lstm'], help='Model type')
+parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+parser.add_argument('--weight_decay', type=float, default=0.001, help='Weight decay')
+args = parser.parse_args()
+
+d_model = args.d_model
+latent_dim = args.latent_dim if args.latent_dim is not None and args.latent_dim > 0 else None
+model_type = args.model_type
+lr = args.lr
+weight_decay = args.weight_decay
+
 
 n_fr_bins = 9
-d_model = 512
-latent_dim = None
-model_type = "transformer"  # transformer, lstm
-
-
-n_trials = 200
-n_epochs = 10
-lr = 0.001
-weight_decay = 0.001
+n_trials = 2000
+n_epochs = 200
 
 
 prefix = f"{model_type}_dm{d_model}"
@@ -33,7 +44,7 @@ print(f"Using device: {device}")
 
 
 train_loader, test_loader, test_dataset, n_neurons, max_trial_length = get_dataloaders(
-    n_trials=n_trials, n_future_vel_bins=n_future_vel_bins, n_fr_bins=n_fr_bins, bin_size=bin_size, verbose=True)
+    n_trials=n_trials, n_future_vel_bins=n_future_vel_bins, n_fr_bins=n_fr_bins, bin_size=bin_size, verbose=True, batch_size=100)
 print(n_neurons)
 
 
@@ -51,6 +62,9 @@ criterion = nn.CrossEntropyLoss(ignore_index=-100)
 train_losses = []
 val_losses = []
 test_accs = []
+
+# Initialize start time
+start_time = datetime.now()
 
 # Training loop
 for epoch in range(n_epochs):
@@ -106,24 +120,42 @@ for epoch in range(n_epochs):
         val_losses.append(avg_val_loss)
         test_accs.append(avg_test_acc)
 
+    # Get GPU memory usage
+    gpu_mem_alloc = torch.cuda.memory_allocated(0) / 1024**2 if torch.cuda.is_available() else 0
+    gpu_mem_cached = torch.cuda.memory_reserved(0) / 1024**2 if torch.cuda.is_available() else 0
+    
+    # Get CPU memory usage
+    cpu_mem = psutil.Process().memory_info().rss / 1024**2
+    
+    # Calculate elapsed time and estimate remaining time
+    current_time = datetime.now()
+    elapsed_time = current_time - start_time
+    time_per_epoch = elapsed_time / (epoch + 1)
+    time_left = time_per_epoch * (n_epochs - epoch - 1)
+    hours_left = int(time_left.total_seconds() // 3600)
+    minutes_left = int((time_left.total_seconds() % 3600) // 60)
+    seconds_left = int(time_left.total_seconds() % 60)
+
     if (epoch + 1) % 1 == 0:
-        print(f"\nEpoch {epoch+1}/{n_epochs} | Train Loss: {avg_train_loss:.3f} | Val Loss: {avg_val_loss:.3f} | Test Acc: {avg_test_acc:.3f}")
+        print(f"\n[{current_time.strftime('%H:%M:%S')}] Epoch {epoch+1}/{n_epochs} | Train Loss: {avg_train_loss:.3f} | Val Loss: {avg_val_loss:.3f} | Test Acc: {avg_test_acc:.3f}")
+        print(f"\tGPU Memory: {gpu_mem_alloc:.1f}MB (allocated) {gpu_mem_cached:.1f}MB (cached) | CPU Memory: {cpu_mem:.1f}MB | Estimated time remaining: {hours_left:02d}:{minutes_left:02d}:{seconds_left:02d}")
 
     # Save model checkpoint
-    checkpoint = {
-        'epoch': epoch + 1,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'train_loss': avg_train_loss,
-        'val_loss': avg_val_loss,
-        'test_acc': avg_test_acc,
-        'train_losses': train_losses,
-        'val_losses': val_losses,
-        'test_accs': test_accs
-    }
-    torch.save(checkpoint, f'model_data/{prefix}_epoch{epoch+1}.pt')
+    if (epoch + 1) % 10 == 0:
+        checkpoint = {
+            'epoch': epoch + 1,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_loss': avg_train_loss,
+            'val_loss': avg_val_loss,
+            'test_acc': avg_test_acc,
+            'train_losses': train_losses,
+            'val_losses': val_losses,
+            'test_accs': test_accs
+        }
+        torch.save(checkpoint, f'model_data/{prefix}_epoch{epoch+1}.pt')
 
-    visualize_with_real_data(model, test_loader, n_neurons, n_fr_bins,
-                             device, prefix+f"_epoch{epoch+1}", temperature=1.0)
-    visualize_with_its_own_data(model, test_dataset, n_neurons,
-                                n_fr_bins, device, prefix+f"_epoch{epoch+1}", temperature=1.0)
+        visualize_with_real_data(model, test_loader, n_neurons, n_fr_bins,
+                                device, prefix+f"_epoch{epoch+1}", temperature=1.0)
+        visualize_with_its_own_data(model, test_dataset, n_neurons,
+                                    n_fr_bins, device, prefix+f"_epoch{epoch+1}", temperature=1.0)

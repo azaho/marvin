@@ -8,7 +8,7 @@ os.makedirs('000070/sub-Jenkins', exist_ok=True)
 url = 'https://api.dandiarchive.org/api/assets/9a3225ad-4925-4174-918b-973c057d71b8/download/'
 
 # Local path where the file will be saved
-local_path = '/home/dima/code/marvin/000070/sub-Jenkins/sub-Jenkins_ses-20090916_behavior+ecephys.nwb'
+local_path = '000070/sub-Jenkins/sub-Jenkins_ses-20090916_behavior+ecephys.nwb'
 
 print(f"Downloading file from {url}")
 print(f"Saving to {local_path}")

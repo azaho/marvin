@@ -6,7 +6,7 @@ from pynwb import NWBHDF5IO
 import os
 
 
-def get_dataloaders(n_trials=2000, n_future_vel_bins=20, n_fr_bins=9, bin_size=0.02, verbose=False):
+def get_dataloaders(n_trials=2000, n_future_vel_bins=20, n_fr_bins=9, bin_size=0.02, verbose=False, batch_size=200):
     dataset_path = "000070"
     nwb_file_path = os.path.join(
         dataset_path, "sub-Jenkins", "sub-Jenkins_ses-20090916_behavior+ecephys.nwb")
@@ -51,9 +51,9 @@ def get_dataloaders(n_trials=2000, n_future_vel_bins=20, n_fr_bins=9, bin_size=0
 
     # Use custom collate function to handle variable sequence lengths
     train_loader = DataLoader(
-        train_dataset, batch_size=200, shuffle=True, collate_fn=custom_collate)
+        train_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate)
     test_loader = DataLoader(
-        test_dataset, batch_size=200, collate_fn=custom_collate)
+        test_dataset, batch_size=batch_size, collate_fn=custom_collate)
 
     max_trial_length = max(dataset[i][0].shape[0] for i in range(len(dataset)))
     # 4 second trial max at least
