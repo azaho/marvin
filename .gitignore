@@ -10,3 +10,5 @@ venv/
 
 model_data/
 model_data_old/
+
+transformer_dm1024_lr0.0005_wd0.0_epoch200.pt
