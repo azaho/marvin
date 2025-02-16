@@ -61,7 +61,7 @@ def get_dataloaders(n_trials=2000, n_future_vel_bins=20, n_fr_bins=9, bin_size=0
     return train_loader, test_loader, test_dataset, n_neurons, max_trial_length
 
 
-def get_max_trial_length(dataset, bin_size, min_max_trial_length_seconds=4):
+def get_max_trial_length(dataset, bin_size, min_max_trial_length_seconds=20):
     max_trial_length = max(dataset[i][0].shape[0] for i in range(len(dataset)))
     max_trial_length = max(max_trial_length, int(
         min_max_trial_length_seconds * 1 / bin_size))
