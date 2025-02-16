@@ -8,6 +8,7 @@ import torch
 import psutil
 from datetime import datetime
 import argparse
+import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--d_model', type=int, default=512, help='Model dimension')
@@ -15,6 +16,7 @@ parser.add_argument('--latent_dim', type=int, default=None, help='Latent dimensi
 parser.add_argument('--model_type', type=str, default='transformer', choices=['transformer', 'lstm'], help='Model type')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 parser.add_argument('--weight_decay', type=float, default=0.001, help='Weight decay')
+parser.add_argument('--custom_prefix', type=str, default='', help='Custom prefix for model name')
 args = parser.parse_args()
 
 d_model = args.d_model
@@ -22,18 +24,20 @@ latent_dim = args.latent_dim if args.latent_dim is not None and args.latent_dim 
 model_type = args.model_type
 lr = args.lr
 weight_decay = args.weight_decay
-
+custom_prefix = args.custom_prefix
 
 n_fr_bins = 9
 n_trials = 2000
 n_epochs = 200
 
-
-prefix = f"{model_type}_dm{d_model}"
+if custom_prefix != '': prefix = custom_prefix + "_"
+else: prefix = ""
+prefix += f"{model_type}_dm{d_model}"
 if latent_dim is not None:
     prefix += f"_ld{latent_dim}"
 prefix += f"_lr{lr}_wd{weight_decay}"
 os.makedirs('model_data', exist_ok=True)
+
 n_future_vel_bins = 20
 n_fr_bins = 9
 bin_size = 0.02
@@ -141,7 +145,8 @@ for epoch in range(n_epochs):
         print(f"\tGPU Memory: {gpu_mem_alloc:.1f}MB (allocated) {gpu_mem_cached:.1f}MB (cached) | CPU Memory: {cpu_mem:.1f}MB | Estimated time remaining: {hours_left:02d}:{minutes_left:02d}:{seconds_left:02d}")
 
     # Save model checkpoint
-    if (epoch + 1) % 10 == 0:
+    if (epoch + 1) % 40 == 0:
+        # Save model checkpoint
         checkpoint = {
             'epoch': epoch + 1,
             'model_state_dict': model.state_dict(),
@@ -154,6 +159,23 @@ for epoch in range(n_epochs):
             'test_accs': test_accs
         }
         torch.save(checkpoint, f'model_data/{prefix}_epoch{epoch+1}.pt')
+
+        # Save losses and metrics to JSON
+        metrics = {
+            'epoch': epoch + 1,
+            'train_loss': avg_train_loss,
+            'val_loss': avg_val_loss, 
+            'test_acc': avg_test_acc,
+            'train_losses': train_losses,
+            'val_losses': val_losses,
+            'test_accs': test_accs,
+            'gpu_mem_alloc': gpu_mem_alloc,
+            'gpu_mem_cached': gpu_mem_cached,
+            'cpu_mem': cpu_mem,
+            'time_remaining': f"{hours_left:02d}:{minutes_left:02d}:{seconds_left:02d}"
+        }
+        with open(f'model_data/{prefix}_metrics.json', 'w') as f:
+            json.dump(metrics, f, indent=4)
 
         visualize_with_real_data(model, test_loader, n_neurons, n_fr_bins,
                                 device, prefix+f"_epoch{epoch+1}", temperature=1.0)
